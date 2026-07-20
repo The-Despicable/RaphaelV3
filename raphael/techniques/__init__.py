@@ -264,3 +264,44 @@ register(Technique(
     detection_risk=0.1,
     provides_affordances=["FLAG_DECRYPTED"],
 ))
+
+# ---------------------------------------------------------------------------
+# Register Blind Probe — zero-knowledge structural perturbation
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="blind_probe",
+    category="recon",
+    prerequisites=["open_ports"],
+    blockers=["no_open_ports", "PORT_MUTE_ON_ALL_VECTORS"],
+    outcome="Fires entropy vectors at open sockets before protocol identification. Measures structural response signatures.",
+    provides=["SIGNATURE_ACQUIRED", "http_service"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.blind_probe {target_ip} {port}",
+    timeout=60,
+    stealth_score=0.3,  # Noisy by nature — structural anomalies trigger IDS
+    required_capabilities=[],
+    parser="blind_probe_parse",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.6,  # High — these payloads look like attacks
+    provides_affordances=["SIGNATURE_ACQUIRED", "http_service"],
+))
+
+register(Technique(
+    name="blind_probe",
+    category="recon",
+    prerequisites=["open_ports"],
+    blockers=["no_open_ports", "PORT_MUTE_ON_ALL_VECTORS"],
+    outcome="Fires entropy vectors at open sockets before protocol identification. Measures structural response signatures.",
+    provides=["SIGNATURE_ACQUIRED", "http_service"],
+    tool="python3",
+    tool_args_template="-m raphael.scripts.blind_probe_runner {target_ip} {port}",
+    timeout=60,
+    stealth_score=0.3,
+    required_capabilities=[],
+    parser="BlindProbeParser",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.6,
+    provides_affordances=["SIGNATURE_ACQUIRED", "http_service"],
+))

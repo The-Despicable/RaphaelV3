@@ -16,6 +16,7 @@ from raphael.circulatory.blackboard import Blackboard
 from raphael.cerebellum.error_diagnoser import get_diagnoser, Diagnosis
 from raphael.models.target_model import FailureRecord
 from raphael.cognitive.protocol_inference import ProtocolInferenceEngine
+from raphael.cognitive.ontology_expander import OntologyExpander
 
 logger = logging.getLogger("raphael.executor")
 
@@ -147,6 +148,17 @@ class Executor:
 
         # Update target model
         produced_new = state.target.absorb(delta, state.current_cycle)
+
+        # OntologyExpander — mint ephemeral affordances from blind_probe
+        if technique and technique.name == "blind_probe":
+            try:
+                stdout = result.get("stdout", "")
+                oe_delta = OntologyExpander.mint_affordances(stdout, state.target.domains.get("network"))
+                if not oe_delta.is_empty():
+                    logger.info(f"OntologyExpander: minted {len(oe_delta.new_affordances)} ephemeral affordances")
+                    state.target.absorb(oe_delta, state.current_cycle)
+            except Exception as e:
+                logger.debug(f"OntologyExpander failed: {e}")
 
         # Protocol inference: enrich with inferred affordances from discovered services/ports
         self._run_protocol_inference(state, delta, technique_name)
@@ -931,6 +943,36 @@ def parse_xor_crack_parse(stdout: str, target: str) -> ConstraintDelta:
     )
 
 
+# Wave 3c — Blind probe parser
+
+def parse_BlindProbeParser(stdout: str, target: str) -> ConstraintDelta:
+    """Parse blind_probe JSON output into structural affordances."""
+    from raphael.models.target_model import ConstraintDelta
+    import json
+    affordances = set()
+    evidence = stdout[:2000]
+
+    try:
+        results = json.loads(stdout)
+    except json.JSONDecodeError:
+        affordances.add("blind_probe_output_raw")
+        return ConstraintDelta(new_affordances=affordances, evidence=evidence)
+
+    for vec_name, response in results.items():
+        if response not in ("EMPTY_ACK", "CONN_REFUSED", "CONN_TIMEOUT") and not response.startswith("SOCKET_ERR"):
+            affordances.add(f"VECTOR_RESPONDED:{vec_name}")
+            affordances.add("SIGNATURE_ACQUIRED")
+
+            if "HTTP/" in response or "Server:" in response:
+                affordances.add("http_service")
+                affordances.add("SIG:HTTP_DETECTED")
+            if "SSH-" in response:
+                affordances.add("ssh_service")
+                affordances.add("SIG:SSH_DETECTED")
+
+    return ConstraintDelta(new_affordances=affordances, evidence=evidence)
+
+
 # ===== END WAVE 3 PARSERS =====
 
 # Register all parsers
@@ -969,3 +1011,6 @@ register_parser("auth_bypass_parse", parse_auth_bypass_parse)
 register_parser("js_deobfuscate_parse", parse_js_deobfuscate_parse)
 register_parser("leveldb_data_parse", parse_leveldb_data_parse)
 register_parser("xor_crack_parse", parse_xor_crack_parse)
+
+# Wave 3c — Blind probe parser
+register_parser("BlindProbeParser", parse_BlindProbeParser)
