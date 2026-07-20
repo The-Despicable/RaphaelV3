@@ -789,6 +789,148 @@ def parse_verification_loop(stdout: str, target: str) -> ConstraintDelta:
     return ConstraintDelta(new_affordances=affordances, evidence=stdout[:1000])
 
 
+# ---------------------------------------------------------------------------
+# Wave 3b parsers: HTTP POST capability
+# ---------------------------------------------------------------------------
+
+def parse_http_method_parse(stdout: str, target: str) -> ConstraintDelta:
+    """Parse OPTIONS response to detect POST capability."""
+    from raphael.models.target_model import ConstraintDelta
+    affordances = set()
+    constraints = set()
+    for line in stdout.splitlines():
+        if line.lower().startswith("allow:"):
+            if "post" in line.lower():
+                affordances.add("CAN_HTTP_POST")
+                affordances.add("http_post_enabled")
+            if "put" in line.lower():
+                affordances.add("CAN_HTTP_PUT")
+            if "delete" in line.lower():
+                affordances.add("CAN_HTTP_DELETE")
+    if "CAN_HTTP_POST" not in affordances:
+        constraints.add("http_post_disabled")
+    return ConstraintDelta(
+        new_affordances=affordances,
+        new_constraints=constraints,
+        resolved_unknowns={"http_post_unknown"},
+        evidence=stdout[:1000],
+    )
+
+
+def parse_auth_bypass_parse(stdout: str, target: str) -> ConstraintDelta:
+    """Parse POST login response to detect auth bypass."""
+    from raphael.models.target_model import ConstraintDelta
+    affordances = set()
+    status_code = 0
+    for line in stdout.splitlines():
+        if line.startswith("HTTP/"):
+            parts = line.split()
+            if len(parts) > 1:
+                try:
+                    status_code = int(parts[1])
+                except ValueError:
+                    pass
+            break
+    if status_code in (200, 201, 204):
+        affordances.add("AUTH_BYPASS_SUCCESS")
+        if "Set-Cookie" in stdout or "set-cookie" in stdout.lower():
+            affordances.add("SESSION_COOKIE_ISSUED")
+    elif status_code == 302:
+        affordances.add("AUTH_BYPASS_SUCCESS")
+        affordances.add("AUTH_REDIRECT_DETECTED")
+        if "Set-Cookie" in stdout or "set-cookie" in stdout.lower():
+            affordances.add("SESSION_COOKIE_ISSUED")
+    elif status_code == 401:
+        affordances.add("AUTH_REQUIRED")
+    elif status_code == 403:
+        affordances.add("AUTH_FORBIDDEN")
+    if "SQL syntax" in stdout or "mysql_fetch" in stdout:
+        affordances.add("SQLI_VULNERABLE")
+    return ConstraintDelta(
+        new_affordances=affordances,
+        resolved_unknowns={"login_auth_unknown"},
+        evidence=stdout[:2000],
+    )
+
+
+def parse_js_deobfuscate_parse(stdout: str, target: str) -> ConstraintDelta:
+    """Parse deobfuscated JS output."""
+    from raphael.models.target_model import ConstraintDelta
+    affordances = set()
+    s = stdout.lower()
+    if "http" in s or "function" in s:
+        affordances.add("JS_DEOBFUSCATED")
+    if "xhr" in s or "xmlhttp" in s:
+        affordances.add("js_xhr_detected")
+    if "chrome" in s or "browser" in s:
+        affordances.add("js_extension_api_detected")
+    if "eval" in s:
+        affordances.add("js_eval_remnant")
+    if not affordances:
+        affordances.add("js_still_obfuscated")
+    return ConstraintDelta(
+        new_affordances=affordances,
+        new_constraints={"deobfuscated_output": stdout[:5000]},
+        resolved_unknowns={"js_obfuscation_unknown"},
+        evidence=stdout[:2000],
+    )
+
+
+def parse_leveldb_data_parse(stdout: str, target: str) -> ConstraintDelta:
+    """Parse LevelDB hex dump for encrypted payloads."""
+    from raphael.models.target_model import ConstraintDelta
+    affordances = set()
+    constraints = {}
+    lines = [l for l in stdout.splitlines() if l.strip()]
+    if not lines:
+        affordances.add("leveldb_empty")
+        return ConstraintDelta(
+            new_affordances=affordances,
+            resolved_unknowns={"leveldb_data_unknown"},
+            evidence=stdout[:1000],
+        )
+    affordances.add("LEVELDB_RECORDS_EXTRACTED")
+    affordances.add(f"leveldb_record_count:{len(lines)}")
+    for line in lines:
+        if ":" in line:
+            hex_data = line.split(":", 1)[1]
+            try:
+                raw = bytes.fromhex(hex_data)
+                if b"HTB{" in raw:
+                    affordances.add("flag_encrypted_detected")
+            except (ValueError, AttributeError):
+                pass
+    return ConstraintDelta(
+        new_affordances=affordances,
+        new_constraints=constraints,
+        resolved_unknowns={"leveldb_data_unknown"},
+        evidence=stdout[:2000],
+    )
+
+
+def parse_xor_crack_parse(stdout: str, target: str) -> ConstraintDelta:
+    """Parse XOR sweep output for decrypted flags."""
+    import re
+    from raphael.models.target_model import ConstraintDelta
+    affordances = set()
+    constraints = {}
+    match = re.search(r'HTB\{[^}]{3,80}\}', stdout)
+    if match:
+        affordances.add("FLAG_DECRYPTED")
+        constraints["flag"] = match.group(0)
+        affordances.add("flag_captured")
+    elif "flag" in stdout.lower() and "not" in stdout.lower():
+        affordances.add("xor_sweep_no_flag")
+    else:
+        affordances.add("xor_sweep_incomplete")
+    return ConstraintDelta(
+        new_affordances=affordances,
+        new_constraints=constraints,
+        resolved_unknowns={"xor_decrypt_unknown"},
+        evidence=stdout[:2000],
+    )
+
+
 # ===== END WAVE 3 PARSERS =====
 
 # Register all parsers
@@ -820,3 +962,10 @@ register_parser("rpcinfo_parse", parse_rpcinfo_parse)
 register_parser("vhost_enum", parse_vhost_enum)
 register_parser("exploit_factory", parse_exploit_factory)
 register_parser("verification_loop", parse_verification_loop)
+
+# Wave 3b — HTTP POST + Forensics parsers
+register_parser("http_method_parse", parse_http_method_parse)
+register_parser("auth_bypass_parse", parse_auth_bypass_parse)
+register_parser("js_deobfuscate_parse", parse_js_deobfuscate_parse)
+register_parser("leveldb_data_parse", parse_leveldb_data_parse)
+register_parser("xor_crack_parse", parse_xor_crack_parse)
