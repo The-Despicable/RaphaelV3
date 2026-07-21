@@ -1024,6 +1024,61 @@ def parse_fast_port_parse(stdout: str, target: str) -> ConstraintDelta:
     return delta
 
 
+# ── Wave 3e: directory_brute — gobuster dir output ──────────────────
+def parse_directory_brute(stdout: str, target: str) -> ConstraintDelta:
+    affordances = set()
+    import re
+    # gobuster dir output: "/path (Status: NNN) [Size: NNN]"
+    for line in stdout.splitlines():
+        m = re.match(r'^(\/[\w\-./]+)\s+\(Status:\s*(\d+)\)', line)
+        if m:
+            path = m.group(1)
+            status = m.group(2)
+            affordances.add(f"dir:{path}")
+            affordances.add(f"dir_status:{path}:{status}")
+            if status.startswith("2"):
+                affordances.add("discovered_accessible_paths")
+    if affordances:
+        affordances.add("directories_found")
+    return ConstraintDelta(
+        new_affordances=affordances,
+        resolved_unknowns={"directories_unknown"},
+        evidence=stdout[:2000],
+    )
+
+
+# ── Wave 3e: nuclei_vuln — generic nuclei JSON findings parser ──────
+def parse_nuclei_vuln(stdout: str, target: str) -> ConstraintDelta:
+    affordances = set()
+    constraints = set()
+    import json as _json
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = _json.loads(line)
+        except _json.JSONDecodeError:
+            continue
+        tid = data.get("template-id", "")
+        matched = data.get("matched-at", "")
+        severity = data.get("info", {}).get("severity", "unknown")
+        if tid:
+            affordances.add(f"vuln:{tid}")
+            affordances.add(f"vuln_severity:{severity}")
+            if matched:
+                affordances.add(f"vuln_match:{matched}")
+            affordances.add("vulnerability_found")
+    if not affordances:
+        constraints.add("no_vulnerability_found")
+    return ConstraintDelta(
+        new_affordances=affordances,
+        new_constraints=constraints,
+        resolved_unknowns={"vulnerability_unknown"},
+        evidence=stdout[:2000],
+    )
+
+
 # ===== END WAVE 3 PARSERS =====
 
 # Register all parsers
@@ -1069,3 +1124,7 @@ register_parser("BlindProbeParser", parse_BlindProbeParser)
 # Wave 3d — Hellfire extractions
 register_parser("mass_payload_parse", parse_mass_payload_parse)
 register_parser("fast_port_parse", parse_fast_port_parse)
+
+# Wave 3e — Directory brute + nuclei vuln parsers
+register_parser("directory_brute", parse_directory_brute)
+register_parser("nuclei_vuln", parse_nuclei_vuln)

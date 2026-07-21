@@ -406,3 +406,82 @@ register(Technique(
     detection_risk=0.3,
     provides_affordances=["subdomains"],
 ))
+
+# ---------------------------------------------------------------------------
+# Register Wave 4b — Directory brute, SQLi, LFI, SSRF
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="directory_brute",
+    category="recon",
+    prerequisites=["http_service"],
+    blockers=["no_http_response"],
+    outcome="Directory/file enumeration via gobuster dir mode",
+    provides=["directories_found"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.directory_brute http://{target}/",
+    timeout=300,
+    stealth_score=0.4,
+    required_capabilities=[],
+    parser="directory_brute",
+    type="recon",
+    cost=1.0,
+    detection_risk=0.3,
+    provides_affordances=["directories_found"],
+))
+
+register(Technique(
+    name="sqli_check",
+    category="exploit",
+    prerequisites=["http_service"],
+    blockers=["no_http_response", "sqli_not_found"],
+    outcome="Deep SQL injection detection via sqlmap (complements mass_payload_test)",
+    provides=["sqli_vulnerable", "sqli_confirmed", "dbms_identified"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.sqli_check http://{target}/",
+    timeout=600,
+    stealth_score=0.3,
+    required_capabilities=[],
+    parser="sqlmap_result",
+    type="exploit",
+    cost=2.0,
+    detection_risk=0.6,
+    provides_affordances=["sqli_vulnerable", "sqli_confirmed"],
+))
+
+register(Technique(
+    name="lfi_check",
+    category="exploit",
+    prerequisites=["http_service"],
+    blockers=["no_http_response", "no_vulnerability_found"],
+    outcome="Local File Inclusion detection via nuclei LFI templates",
+    provides=["lfi_vulnerable"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.lfi_check http://{target}/",
+    timeout=120,
+    stealth_score=0.5,
+    required_capabilities=[],
+    parser="nuclei_vuln",
+    type="exploit",
+    cost=1.0,
+    detection_risk=0.4,
+    provides_affordances=["lfi_vulnerable"],
+))
+
+register(Technique(
+    name="ssrf_check",
+    category="exploit",
+    prerequisites=["http_service"],
+    blockers=["no_http_response", "no_vulnerability_found"],
+    outcome="Server-Side Request Forgery detection via nuclei SSRF templates",
+    provides=["ssrf_vulnerable"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.ssrf_check http://{target}/",
+    timeout=120,
+    stealth_score=0.5,
+    required_capabilities=[],
+    parser="nuclei_vuln",
+    type="exploit",
+    cost=1.0,
+    detection_risk=0.4,
+    provides_affordances=["ssrf_vulnerable"],
+))
