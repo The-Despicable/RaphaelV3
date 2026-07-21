@@ -485,3 +485,44 @@ register(Technique(
     detection_risk=0.4,
     provides_affordances=["ssrf_vulnerable"],
 ))
+
+# ---------------------------------------------------------------------------
+# Register Wave 4c — CMDi, Open Redirect
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="cmdi_check",
+    category="exploit",
+    prerequisites=["http_service"],
+    blockers=["no_http_response", "no_vulnerability_found"],
+    outcome="Command Injection detection via nuclei cmd-injection/rce templates",
+    provides=["cmdi_vulnerable"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.cmdi_check http://{target}/",
+    timeout=120,
+    stealth_score=0.5,
+    required_capabilities=[],
+    parser="nuclei_vuln",
+    type="exploit",
+    cost=1.0,
+    detection_risk=0.4,
+    provides_affordances=["cmdi_vulnerable"],
+))
+
+register(Technique(
+    name="open_redirect",
+    category="exploit",
+    prerequisites=["http_service"],
+    blockers=["no_http_response", "no_vulnerability_found"],
+    outcome="Open Redirect detection via nuclei redirect templates",
+    provides=["open_redirect_vulnerable"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.open_redirect http://{target}/",
+    timeout=120,
+    stealth_score=0.6,
+    required_capabilities=[],
+    parser="nuclei_vuln",
+    type="exploit",
+    cost=0.5,
+    detection_risk=0.2,
+    provides_affordances=["open_redirect_vulnerable"],
+))

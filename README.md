@@ -18,7 +18,7 @@ Raphael V3 is a **cognitive organism**, not a toolchain. Organs run at different
 │  │  └──────────┘  └──────────┘  └──────────┘  └───────────┘  │      │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │      │
 │  │  │Techniques│  │Blackboard│  │ EventBus │  │ Memory    │  │      │
-│  │  │ (14 reg) │  │ (shared) │  │ (pipeline│  │(hippocampus│  │      │
+│  │  │ (23 reg) │  │ (shared)  │  │ (pipeline│  │(hippocampus│  │      │
 │  │  │          │  │          │  │  events) │  │ + cortex) │  │      │
 │  │  └──────────┘  └──────────┘  └──────────┘  └───────────┘  │      │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │      │
@@ -87,7 +87,7 @@ The brain operates as a continuous loop:
    - SelfModificationEngine rewrites decision logic
    - Episodic memory stored in Hippocampus
 
-### 14 Registered Techniques
+### 23 Registered Techniques
 
 | Type | Technique | Purpose |
 |------|-----------|---------|
@@ -101,10 +101,19 @@ The brain operates as a continuous loop:
 | Recon | `leveldb_parse` | Chrome extension LevelDB extraction |
 | Recon | `mass_payload_test` | Rapid injection point discovery via PayloadFabric |
 | Recon | `fast_port_check` | 200-concurrent asyncio TCP probe |
+| Recon | `waf_detect` | WAF fingerprinting via nuclei |
+| Recon | `tech_detect` | Technology stack via whatweb |
+| Recon | `subdomain_enum` | Subdomain discovery via gobuster DNS |
+| Recon | `directory_brute` | Directory/file enumeration via gobuster dir |
 | Exploit | `exploit_factory` | CVE-based payload generation (5 CVEs, 8 templates) |
 | Exploit | `verification_loop` | 3-channel verification (TCP/HTTP/DNS) |
 | Exploit | `auth_bypass_post` | SQLi/NoSQLi auth bypass via POST login |
 | Exploit | `xor_crack` | Phase-shifted XOR decryption for HTB flags |
+| Exploit | `sqli_check` | Deep SQLi via sqlmap |
+| Exploit | `lfi_check` | LFI detection via nuclei |
+| Exploit | `ssrf_check` | SSRF detection via nuclei |
+| Exploit | `cmdi_check` | Command injection via nuclei |
+| Exploit | `open_redirect` | Open redirect via nuclei |
 
 ## Infrastructure (orchestrator/)
 
