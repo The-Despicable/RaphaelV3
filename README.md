@@ -18,13 +18,14 @@ Raphael V3 is a **cognitive organism**, not a toolchain. Organs run at different
 │  │  └──────────┘  └──────────┘  └──────────┘  └───────────┘  │      │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │      │
 │  │  │Techniques│  │Blackboard│  │ EventBus │  │ Memory    │  │      │
-│  │  │ (26 reg) │  │ (shared) │  │ (pipeline│  │(hippocampus│  │      │
+│  │  │ (14 reg) │  │ (shared) │  │ (pipeline│  │(hippocampus│  │      │
 │  │  │          │  │          │  │  events) │  │ + cortex) │  │      │
 │  │  └──────────┘  └──────────┘  └──────────┘  └───────────┘  │      │
-│  │  ┌──────────┐  ┌──────────┐  ┌─────────────────────────┐  │      │
-│  │  │ VHOST    │  │ Exploit  │  │ Verification Loop       │  │      │
-│  │  │ Enum     │  │ Factory  │  │ (TCP/HTTP/DNS)          │  │      │
-│  │  └──────────┘  └──────────┘  └─────────────────────────┘  │      │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │      │
+│  │  │ VHOST    │  │ Exploit  │  │ Parallel │  │Verification│  │      │
+│  │  │ Enum     │  │ Factory  │  │ Recon    │  │ Loop       │  │      │
+│  │  │          │  │          │  │(limbic/) │  │(TCP/HTTP)  │  │      │
+│  │  └──────────┘  └──────────┘  └──────────┘  └───────────┘  │      │
 │  └────────────────────────────────────────────────────────────┘      │
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────────┐      │
@@ -60,6 +61,8 @@ The brain operates as a continuous loop:
 
 ### Cycle
 
+0. **ParallelRecon** (`limbic/parallel_recon.py`) — on cycle 0, fires all available recon techniques concurrently, merges deltas, enriches affordance set before main loop begins.
+
 1. **Planner** (`cortex/planner.py`) — selects next technique using:
    - TargetModel filter (constraints + affordances)
    - CapabilityModel filter (owned vs gaps)
@@ -84,7 +87,7 @@ The brain operates as a continuous loop:
    - SelfModificationEngine rewrites decision logic
    - Episodic memory stored in Hippocampus
 
-### 26 Registered Techniques
+### 14 Registered Techniques
 
 | Type | Technique | Purpose |
 |------|-----------|---------|
@@ -92,28 +95,16 @@ The brain operates as a continuous loop:
 | Recon | `service_scan` | Service version detection |
 | Recon | `dns_lookup` | DNS record enumeration |
 | Recon | `vhost_enum` | Virtual host discovery (DNS brute, CT logs, SSL SAN) |
-| Recon | `subdomain_enum` | Subdomain discovery |
-| Recon | `waf_detect` | WAF fingerprinting |
-| Recon | `tech_detect` | Technology stack identification |
-| Recon | `directory_brute` | Directory/file busting |
-| Recon | `parameter_fuzz` | Parameter fuzzing |
-| Recon | `ad1_xor_sweep` | Full-image XOR sweep with shifted-phase key derivation |
-| Exploit | `sqli_check` | SQL injection detection |
-| Exploit | `xss_check` | XSS detection |
-| Exploit | `ssrf_check` | SSRF detection |
-| Exploit | `cmdi_check` | Command injection detection |
-| Exploit | `lfi_check` | Local file inclusion |
-| Exploit | `ssti_check` | Server-side template injection |
-| Exploit | `open_redirect` | Open redirect detection |
-| Exploit | `jwt_crack` | JWT weakness testing |
-| Exploit | `cors_check` | CORS misconfiguration |
-| Exploit | `http_verbs` | HTTP method abuse |
-| Exploit | `auth_bypass` | Authentication bypass |
-| Exploit | `nosqli_check` | NoSQL injection |
-| Pipeline | `vhost_enum` | 5-enumerator vhost discovery pipeline |
-| Pipeline | `exploit_factory` | CVE-based payload generation (5 CVEs, 8 templates) |
-| Pipeline | `verification_loop` | 3-channel verification (TCP/HTTP/DNS) |
-| Custom | `ad1_xor_sweep` | Forensic image XOR decryption |
+| Recon | `blind_probe` | Zero-knowledge entropy vectors before protocol ID |
+| Recon | `check_http_methods` | HTTP OPTIONS to discover POST/PUT/DELETE |
+| Recon | `js_deobfuscate` | Chrome extension JS deobfuscation |
+| Recon | `leveldb_parse` | Chrome extension LevelDB extraction |
+| Recon | `mass_payload_test` | Rapid injection point discovery via PayloadFabric |
+| Recon | `fast_port_check` | 200-concurrent asyncio TCP probe |
+| Exploit | `exploit_factory` | CVE-based payload generation (5 CVEs, 8 templates) |
+| Exploit | `verification_loop` | 3-channel verification (TCP/HTTP/DNS) |
+| Exploit | `auth_bypass_post` | SQLi/NoSQLi auth bypass via POST login |
+| Exploit | `xor_crack` | Phase-shifted XOR decryption for HTB flags |
 
 ## Infrastructure (orchestrator/)
 
