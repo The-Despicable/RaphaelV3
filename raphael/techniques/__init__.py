@@ -305,3 +305,44 @@ register(Technique(
     detection_risk=0.6,
     provides_affordances=["SIGNATURE_ACQUIRED", "http_service"],
 ))
+
+# ---------------------------------------------------------------------------
+# Register Hellfire extractions: PayloadFabric mass test + fast port scan
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="mass_payload_test",
+    category="recon",
+    prerequisites=["http_service"],
+    blockers=["no_http_response"],
+    outcome="Rapidly fires SQLi/XSS/SSTI/NoSQLi payloads at discovered parameters via PayloadFabric",
+    provides=["INJECTION_POINTS_FOUND"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.payloads.fabric --type sqli --target http://{target}/",
+    timeout=120,
+    stealth_score=0.3,
+    required_capabilities=[],
+    parser="mass_payload_parse",
+    type="recon",
+    cost=1.0,
+    detection_risk=0.5,
+    provides_affordances=["INJECTION_POINTS_FOUND"],
+))
+
+register(Technique(
+    name="fast_port_check",
+    category="recon",
+    prerequisites=[],
+    blockers=["scan_in_progress"],
+    outcome="Concurrent TCP port scan — 50-100x faster than nmap sequential scan for common ports",
+    provides=["open_ports", "port_list"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.fast_port_scan --target {target} --ports {ports}",
+    timeout=120,
+    stealth_score=0.4,
+    required_capabilities=[],
+    parser="fast_port_parse",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.4,
+    provides_affordances=["open_ports"],
+))

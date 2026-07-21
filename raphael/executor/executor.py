@@ -1,6 +1,7 @@
 """Executor — runs one technique, parses result, updates models."""
 from __future__ import annotations
 import asyncio
+import json
 import time
 import logging
 import re
@@ -973,6 +974,55 @@ def parse_BlindProbeParser(stdout: str, target: str) -> ConstraintDelta:
     return ConstraintDelta(new_affordances=affordances, evidence=evidence)
 
 
+# ── Wave 3d: mass_payload_parse — PayloadFabric injection point parser ──
+def parse_mass_payload_parse(stdout: str, target: str) -> ConstraintDelta:
+    if not stdout.strip():
+        return ConstraintDelta.empty()
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return ConstraintDelta.empty()
+    if not isinstance(data, list):
+        return ConstraintDelta.empty()
+    delta = ConstraintDelta()
+    injection_found = False
+    for item in data:
+        ptype = item.get("type", "")
+        if ptype in ("sqli", "xss", "ssti", "nosqli"):
+            injection_found = True
+            delta.new_affordances.add(f"{ptype}_payload_generated")
+            delta.new_affordances.add(f"INJECTION_CANDIDATE_{ptype.upper()}")
+    if injection_found:
+        delta.new_affordances.add("INJECTION_POINTS_FOUND")
+        delta.evidence = json.dumps(data[:5])
+    return delta
+
+
+# ── Wave 3d: fast_port_parse — fast_port_scan results parser ──
+def parse_fast_port_parse(stdout: str, target: str) -> ConstraintDelta:
+    if not stdout.strip():
+        return ConstraintDelta.empty()
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return ConstraintDelta.empty()
+    delta = ConstraintDelta()
+    for port in data.get("open_ports", []):
+        delta.new_affordances.add(f"port_{port}_open")
+        delta.new_affordances.add(f"PORT_{port}_TCP")
+    for port in data.get("closed_ports", []):
+        delta.new_constraints.add(f"port_{port}_closed")
+    if data.get("open_ports"):
+        port_list = ",".join(str(p) for p in data["open_ports"])
+        delta.new_affordances.add(f"port_list:{port_list}")
+        delta.new_affordances.add("open_ports")
+        delta.evidence = json.dumps({
+            "open": data["open_ports"],
+            "closed_count": len(data["closed_ports"]),
+        })
+    return delta
+
+
 # ===== END WAVE 3 PARSERS =====
 
 # Register all parsers
@@ -1014,3 +1064,7 @@ register_parser("xor_crack_parse", parse_xor_crack_parse)
 
 # Wave 3c — Blind probe parser
 register_parser("BlindProbeParser", parse_BlindProbeParser)
+
+# Wave 3d — Hellfire extractions
+register_parser("mass_payload_parse", parse_mass_payload_parse)
+register_parser("fast_port_parse", parse_fast_port_parse)

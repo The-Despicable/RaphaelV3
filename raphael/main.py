@@ -29,6 +29,7 @@ from raphael.cortex.planner import Planner, Action
 from raphael.executor.executor import Executor
 from raphael.techniques import TECHNIQUE_REGISTRY
 from raphael.hippocampus.episode_store import get_hippocampus, Hippocampus
+from raphael.limbic.parallel_recon import ParallelRecon
 
 logging.basicConfig(
     level=logging.INFO,
@@ -118,6 +119,7 @@ class RaphaelOrganism:
         self.executor = Executor(self.event_bus, self.blackboard)
         self.spinal_reflex = SpinalReflex(self.executor)
         self.hippocampus = get_hippocampus()
+        self.parallel_recon = ParallelRecon(self.executor)
         self.thermoregulator = Thermoregulator(
             config, self.executor, self.blackboard,
             self.event_bus, self.spinal_reflex
@@ -171,6 +173,15 @@ class RaphaelOrganism:
 
         # Start thermoregulator in background
         thermo_task = asyncio.create_task(self.thermoregulator.start())
+
+        # ParallelRecon batch — fire all available recon techniques concurrently
+        try:
+            batch_delta = await self.parallel_recon.run_batch(self.state)
+            if not batch_delta.is_empty():
+                logger.info(f"ParallelRecon: +{len(batch_delta.new_affordances)} affordances, "
+                            f"{len(batch_delta.new_constraints)} constraints (batch 0)")
+        except Exception as e:
+            logger.debug(f"ParallelRecon batch failed: {e}")
 
         try:
             while self._running and self.state.current_cycle < self.config.max_cycles:
