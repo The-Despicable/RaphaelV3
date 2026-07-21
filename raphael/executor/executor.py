@@ -472,6 +472,7 @@ def parse_waf_detect(stdout: str, target: str) -> ConstraintDelta:
 def parse_tech_fingerprint(stdout: str, target: str) -> ConstraintDelta:
     """Parse whatweb output."""
     affordances = set()
+    constraints = set()
     import re
     # whatweb outputs JSON with --log-json
     for line in stdout.splitlines():

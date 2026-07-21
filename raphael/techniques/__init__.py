@@ -346,3 +346,63 @@ register(Technique(
     detection_risk=0.4,
     provides_affordances=["open_ports"],
 ))
+
+# ---------------------------------------------------------------------------
+# Register Wave 4a — WAF detect, tech detect, subdomain enum
+# ---------------------------------------------------------------------------
+register(Technique(
+    name="waf_detect",
+    category="recon",
+    prerequisites=["http_service"],
+    blockers=["no_http_response"],
+    outcome="WAF fingerprinting via nuclei WAF detection templates",
+    provides=["waf_detected"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.waf_detect http://{target}/",
+    timeout=60,
+    stealth_score=0.7,
+    required_capabilities=[],
+    parser="waf_detect",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.2,
+    provides_affordances=["waf_detected"],
+))
+
+register(Technique(
+    name="tech_detect",
+    category="recon",
+    prerequisites=["http_service"],
+    blockers=["no_http_response", "no_tech_detected"],
+    outcome="Technology stack identification via whatweb",
+    provides=["tech_stack"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.tech_detect http://{target}/",
+    timeout=120,
+    stealth_score=0.8,
+    required_capabilities=[],
+    parser="tech_fingerprint",
+    type="recon",
+    cost=0.5,
+    detection_risk=0.15,
+    provides_affordances=["tech_stack"],
+))
+
+register(Technique(
+    name="subdomain_enum",
+    category="recon",
+    prerequisites=["dns_records_resolved"],
+    blockers=["no_dns_for_ip_target"],
+    outcome="Subdomain enumeration via gobuster DNS brute force",
+    provides=["subdomains"],
+    tool="python3",
+    tool_args_template="-m raphael.techniques.subdomain_enum {target}",
+    timeout=300,
+    stealth_score=0.6,
+    required_capabilities=[],
+    parser="subdomain_list",
+    type="recon",
+    cost=1.0,
+    detection_risk=0.3,
+    provides_affordances=["subdomains"],
+))
