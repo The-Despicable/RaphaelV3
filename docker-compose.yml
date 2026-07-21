@@ -303,6 +303,7 @@ services:
       - SERVICE_NAME=raphael-api
       - RAPHAEL_PATH=/raphael
       - CI_API_PORT=3900
+      - ORCHESTRATOR_API_PORT=3900
     volumes:
       - ./orchestrator:/raphael/orchestrator
       - ./cli:/raphael/cli
